@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, UTC
 # 설정
 # ==============================
 SLACK_WEBHOOK = os.environ["SLACK_WEBHOOK"]
-CACHE_FILE = "cache.json"
+CACHE_FILE = os.path.join(os.getcwd(), "cache.json")  # 절대 경로
 MAX_NEWS_PER_SOURCE = 5
 CVSS_THRESHOLD = 7.0
 
@@ -28,6 +28,7 @@ def load_cache():
 def save_cache(cache):
     with open(CACHE_FILE, "w", encoding="utf-8") as f:
         json.dump(cache, f, ensure_ascii=False, indent=2)
+    print(f"Cache saved: {len(cache.get('news', []))} news, {len(cache.get('cves', []))} cves")
 
 # ==============================
 # Slack 텍스트 메시지
