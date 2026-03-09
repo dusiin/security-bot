@@ -93,44 +93,39 @@ def collect_news():
 # ==============================
 # CVE 수집 (NVD API 2.0, 날짜 필터링 + 중요도 정렬)
 # ==============================
-def parse_cve_date(datestr):
-    # ISO 8601 문자열 → UTC datetime
-    # 예: "2026-02-13T19:17:31.310"
-    dt = datetime.fromisoformat(datestr.split(".")[0]).replace(tzinfo=timezone.utc)
-    return dt
-
 def collect_cve(days=7):
     url = "https://services.nvd.nist.gov/rest/json/cves/2.0"
-    start = datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(days=days)
-    params = {"pubStartDate": start.strftime("%Y-%m-%dT%H:%M:%S.000"), "resultsPerPage": 50}
-    
-    r = requests.get(url, params=params)
-    data = r.json()
-    cves = []
-    
-    now = datetime.utcnow().replace(tzinfo=timezone.utc)
-    
-    for item in data.get("vulnerabilities", []):
-        cve = item["cve"]
-        published_dt = parse_cve_date(cve.get("published"))
-        if published_dt > now:
-            # 미래 날짜 skip
-            continue
+    start = datetime.utcnow() - timedelta(days=days)
+    params = {"pubStartDate": start.strftime("%Y-%m-%dT00:00:00.000"), "resultsPerPage": 50}
 
+    try:
+        r = requests.get(url, params=params, timeout=20)
+        r.raise_for_status()
+    except requests.RequestException as e:
+        print("Error fetching CVE:", e)
+        return []
+
+    try:
+        data = r.json()
+    except ValueError:
+        print("Empty or invalid JSON response from NVD API")
+        return []
+
+    cves = []
+    for item in data.get("vulnerabilities", []):
+        cve = item.get("cve", {})
         baseScore = cve.get("metrics", {}).get("cvssMetricV31", [{}])[0].get("cvssData", {}).get("baseScore", 0)
         if baseScore >= 7.0:
+            published = cve.get("published", "")[:10]  # YYYY-MM-DD
             cves.append({
-                "id": cve["id"],
-                "desc": cve["descriptions"][0]["value"],
-                "published": published_dt.strftime("%Y-%m-%d"),
+                "id": cve.get("id"),
+                "desc": cve.get("descriptions", [{}])[0].get("value", ""),
+                "published": published,
                 "baseScore": baseScore,
-                "url": f"https://nvd.nist.gov/vuln/detail/{cve['id']}",
-                "exploit": next((r["url"] for r in cve.get("references", []) if "Exploit" in r.get("tags", [])), None)
+                "url": f"https://nvd.nist.gov/vuln/detail/{cve.get('id')}",
             })
-    
-    # CVSS 점수 높은 순 정렬
     return sorted(cves, key=lambda x: x["baseScore"], reverse=True)
-
+    
 # ==============================
 # 중복 제거
 # ==============================
