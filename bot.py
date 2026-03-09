@@ -62,7 +62,8 @@ def build_blocks(news, cves):
                     "type": "context",
                     "elements": [{"type": "mrkdwn", "text": f"💥 Exploit: {c['exploit']}"}]
                 })
-            blocks.append({"type": "divider"})
+    if blocks and blocks[-1]["type"] == "divider":
+        blocks.pop()
     return blocks
 
 # ==============================
