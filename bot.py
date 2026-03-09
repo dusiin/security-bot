@@ -1,7 +1,7 @@
 import os
 import requests
 
-SLACK_WEBHOOK = os.environ["SLACK_WEBHOOK_11ST"]
+SLACK_WEBHOOK = os.environ["SLACK_WEBHOOK"]
 
 def send_test():
 
