@@ -72,8 +72,8 @@ def collect_cve():
     url = "https://services.nvd.nist.gov/rest/json/cves/2.0"
     yesterday = datetime.utcnow() - timedelta(days=1)
     params = {
-        "pubStartDate": yesterday.strftime("%Y-%m-%dT00:00:00.000"),
-        "cvssV3Severity": "HIGH"
+        "published": yesterday.strftime("%Y-%m-%dT00:00:00.000"),
+        "baseSeverity": "HIGH"
     }
     try:
         r = requests.get(url, params=params)
