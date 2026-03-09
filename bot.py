@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, UTC
 SLACK_WEBHOOK = os.environ["SLACK_WEBHOOK"]
 CACHE_FILE = "cache.json"
 MAX_NEWS_PER_SOURCE = 5
-CVSS_THRESHOLD = 7.0  # 중요도 기준: baseScore >= 7.0
+CVSS_THRESHOLD = 7.0
 
 # ==============================
 # 캐시
@@ -26,49 +26,41 @@ def save_cache(cache):
         json.dump(cache, f, ensure_ascii=False, indent=2)
 
 # ==============================
-# Slack Block 메시지
+# Slack 텍스트 메시지
 # ==============================
-def send_slack_block(blocks):
+def send_slack(text):
     try:
         r = requests.post(
             SLACK_WEBHOOK,
-            json={"blocks": blocks},
+            json={"text": text},
             timeout=10
         )
-
         print("Slack response:", r.status_code, r.text)
         r.raise_for_status()
     except Exception as e:
         print("Error sending Slack message:", e)
 
-def build_blocks(news, cves):
-    blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": "*🔐 Security Intelligence Update*"}}]
-    
+def build_message(news, cves):
+
+    msg = "🔐 *Security Intelligence Update*\n\n"
+
     if news:
-        blocks.append({"type": "header", "text": {"type": "plain_text", "text": "📰 Security News"}})
+        msg += "📰 *Security News*\n"
         for n in news:
-            blocks.append({
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": f"• <{n['link']}|{n['title']}> ({n['source']})"}
-            })
-            blocks.append({"type": "divider"})
-    
+            msg += f"- {n['title']} ({n['source']})\n{n['link']}\n\n"
+
     if cves:
-        blocks.append({"type": "header", "text": {"type": "plain_text", "text": "🚨 High Severity CVEs"}})
+        msg += "🚨 *High Severity CVEs*\n"
         for c in cves:
-            desc = c.get("desc", "")[:300]  # 요약
-            blocks.append({
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": f"*{c['id']}* - {desc}\n• Published: {c['published']}\n• CVSS: {c['baseScore']}\n<{c['url']}|Details>"}
-            })
-            if "exploit" in c:
-                blocks.append({
-                    "type": "context",
-                    "elements": [{"type": "mrkdwn", "text": f"💥 Exploit: {c['exploit']}"}]
-                })
-    if blocks and blocks[-1]["type"] == "divider":
-        blocks.pop()
-    return blocks
+            desc = c.get("desc", "").replace("\n", " ")[:200]
+            msg += (
+                f"*{c['id']}*\n"
+                f"CVSS: {c['baseScore']} | Published: {c['published']}\n"
+                f"{desc}\n"
+                f"{c['url']}\n\n"
+            )
+
+    return msg
 
 # ==============================
 # 뉴스 수집
@@ -92,13 +84,18 @@ def collect_news():
     for source, url in {**KOREAN_RSS_FEEDS, **FOREIGN_RSS_FEEDS}.items():
         feed = feedparser.parse(url)
         for entry in feed.entries[:MAX_NEWS_PER_SOURCE]:
-            results.append({"title": entry.title, "link": entry.link, "source": source})
+            results.append({
+                "title": entry.title,
+                "link": entry.link,
+                "source": source
+            })
     return results
 
 # ==============================
-# CVE 수집 (NVD API 2.0, 날짜 필터링 + 중요도 정렬)
+# CVE 수집
 # ==============================
 def collect_cve(days=1):
+
     url = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 
     end = datetime.now(UTC)
@@ -124,8 +121,11 @@ def collect_cve(days=1):
 
         metric = metrics[0]
         cvss = metric.get("cvssData", {})
+
         baseScore = cvss.get("baseScore", 0)
+
         if baseScore >= CVSS_THRESHOLD:
+
             cves.append({
                 "id": cve["id"],
                 "baseScore": baseScore,
@@ -135,11 +135,10 @@ def collect_cve(days=1):
                 "url": f"https://nvd.nist.gov/vuln/detail/{cve['id']}"
             })
 
-    # CVSS 점수 높은순 정렬
     cves.sort(key=lambda x: x["baseScore"], reverse=True)
 
     return cves
-    
+
 # ==============================
 # 중복 제거
 # ==============================
@@ -152,21 +151,25 @@ def filter_new_items(news, cves, cache):
 # Main
 # ==============================
 def main():
+
     cache = load_cache()
+
     news = collect_news()
-    cves = collect_cve(days=7)  # 최근 7일 CVE 조회
+    cves = collect_cve(days=7)
 
     news, cves = filter_new_items(news, cves, cache)
+
     if not news and not cves:
         print("No new items today.")
         return
 
-    blocks = build_blocks(news, cves)
-    send_slack_block(blocks)
+    message = build_message(news, cves)
 
-    # 캐시에 기록
+    send_slack(message)
+
     cache["news"] += [n["link"] for n in news]
     cache["cves"] += [c["id"] for c in cves]
+
     save_cache(cache)
 
 if __name__ == "__main__":
