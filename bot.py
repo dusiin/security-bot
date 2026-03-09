@@ -17,8 +17,12 @@ CVSS_THRESHOLD = 7.0
 # ==============================
 def load_cache():
     if os.path.exists(CACHE_FILE):
-        with open(CACHE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(CACHE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, ValueError):
+            print("Warning: cache.json is empty or invalid, resetting cache")
+            return {"news": [], "cves": []}
     return {"news": [], "cves": []}
 
 def save_cache(cache):
