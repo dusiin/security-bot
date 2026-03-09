@@ -28,7 +28,7 @@ def save_cache(cache):
 # ==============================
 # Slack Block 메시지
 # ==============================
-def send_slack(blocks):
+def send_slack_block(blocks):
     try:
         r = requests.post(
             SLACK_WEBHOOK,
