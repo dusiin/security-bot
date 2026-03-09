@@ -2,7 +2,7 @@ import os
 import requests
 import feedparser
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 
 # ==============================
 # 설정
@@ -96,7 +96,7 @@ def collect_news():
 def collect_cve(days=1):
     url = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 
-    end = datetime.utcnow()
+    end = datetime.now(UTC)
     start = end - timedelta(days=days)
 
     params = {
@@ -113,13 +113,17 @@ def collect_cve(days=1):
     for item in data.get("vulnerabilities", []):
         cve = item["cve"]
 
-        metric = cve.get("metrics", {}).get("cvssMetricV31", [{}])[0]
+        metrics = cve.get("metrics", {}).get("cvssMetricV31", [])
+        if not metrics:
+        continue
+
+        metric = metrics[0]
         cvss = metric.get("cvssData", {})
-        score = cvss.get("baseScore", 0)
+        baseScore = cvss.get("baseScore", 0)
 
         cves.append({
             "id": cve["id"],
-            "score": score,
+            "baseScore": baseScore,
             "severity": cvss.get("baseSeverity"),
             "published": cve["published"][:10],
             "desc": cve["descriptions"][0]["value"][:200],
@@ -127,7 +131,7 @@ def collect_cve(days=1):
         })
 
     # CVSS 점수 높은순 정렬
-    cves.sort(key=lambda x: x["score"], reverse=True)
+    cves.sort(key=lambda x: x["baseScore"], reverse=True)
 
     return cves
     
