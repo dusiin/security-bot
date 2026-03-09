@@ -115,7 +115,7 @@ def collect_cve(days=1):
 
         metrics = cve.get("metrics", {}).get("cvssMetricV31", [])
         if not metrics:
-        continue
+            continue
 
         metric = metrics[0]
         cvss = metric.get("cvssData", {})
