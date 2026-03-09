@@ -28,12 +28,16 @@ def save_cache(cache):
 # ==============================
 # Slack Block 메시지
 # ==============================
-def send_slack_block(blocks):
-    payload = {"blocks": blocks}
+def send_slack(blocks):
     try:
-        r = requests.post(SLACK_WEBHOOK, json=payload)
+        r = requests.post(
+            SLACK_WEBHOOK,
+            json={"blocks": blocks},
+            timeout=10
+        )
+
+        print("Slack response:", r.status_code, r.text)
         r.raise_for_status()
-        print("Slack message sent successfully")
     except Exception as e:
         print("Error sending Slack message:", e)
 
