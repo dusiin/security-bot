@@ -93,38 +93,43 @@ def collect_news():
 # ==============================
 # CVE 수집 (NVD API 2.0, 날짜 필터링 + 중요도 정렬)
 # ==============================
-def collect_cve(days=7):
+def collect_cve(days=1):
     url = "https://services.nvd.nist.gov/rest/json/cves/2.0"
-    start = datetime.utcnow() - timedelta(days=days)
-    params = {"pubStartDate": start.strftime("%Y-%m-%dT00:00:00.000"), "resultsPerPage": 50}
 
-    try:
-        r = requests.get(url, params=params, timeout=20)
-        r.raise_for_status()
-    except requests.RequestException as e:
-        print("Error fetching CVE:", e)
-        return []
+    end = datetime.utcnow()
+    start = end - timedelta(days=days)
 
-    try:
-        data = r.json()
-    except ValueError:
-        print("Empty or invalid JSON response from NVD API")
-        return []
+    params = {
+        "pubStartDate": start.strftime("%Y-%m-%dT%H:%M:%S.000"),
+        "pubEndDate": end.strftime("%Y-%m-%dT%H:%M:%S.000"),
+        "resultsPerPage": 50
+    }
+
+    r = requests.get(url, params=params)
+    data = r.json()
 
     cves = []
+
     for item in data.get("vulnerabilities", []):
-        cve = item.get("cve", {})
-        baseScore = cve.get("metrics", {}).get("cvssMetricV31", [{}])[0].get("cvssData", {}).get("baseScore", 0)
-        if baseScore >= 7.0:
-            published = cve.get("published", "")[:10]  # YYYY-MM-DD
-            cves.append({
-                "id": cve.get("id"),
-                "desc": cve.get("descriptions", [{}])[0].get("value", ""),
-                "published": published,
-                "baseScore": baseScore,
-                "url": f"https://nvd.nist.gov/vuln/detail/{cve.get('id')}",
-            })
-    return sorted(cves, key=lambda x: x["baseScore"], reverse=True)
+        cve = item["cve"]
+
+        metric = cve.get("metrics", {}).get("cvssMetricV31", [{}])[0]
+        cvss = metric.get("cvssData", {})
+        score = cvss.get("baseScore", 0)
+
+        cves.append({
+            "id": cve["id"],
+            "score": score,
+            "severity": cvss.get("baseSeverity"),
+            "published": cve["published"][:10],
+            "desc": cve["descriptions"][0]["value"][:200],
+            "url": f"https://nvd.nist.gov/vuln/detail/{cve['id']}"
+        })
+
+    # CVSS 점수 높은순 정렬
+    cves.sort(key=lambda x: x["score"], reverse=True)
+
+    return cves
     
 # ==============================
 # 중복 제거
