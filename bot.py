@@ -120,15 +120,15 @@ def collect_cve(days=1):
         metric = metrics[0]
         cvss = metric.get("cvssData", {})
         baseScore = cvss.get("baseScore", 0)
-
-        cves.append({
-            "id": cve["id"],
-            "baseScore": baseScore,
-            "severity": cvss.get("baseSeverity"),
-            "published": cve["published"][:10],
-            "desc": cve["descriptions"][0]["value"][:200],
-            "url": f"https://nvd.nist.gov/vuln/detail/{cve['id']}"
-        })
+        if baseScore >= CVSS_THRESHOLD:
+            cves.append({
+                "id": cve["id"],
+                "baseScore": baseScore,
+                "severity": cvss.get("baseSeverity"),
+                "published": cve["published"][:10],
+                "desc": cve["descriptions"][0]["value"][:200],
+                "url": f"https://nvd.nist.gov/vuln/detail/{cve['id']}"
+            })
 
     # CVSS 점수 높은순 정렬
     cves.sort(key=lambda x: x["baseScore"], reverse=True)
