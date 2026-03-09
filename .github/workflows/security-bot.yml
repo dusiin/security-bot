@@ -28,4 +28,4 @@ jobs:
     - name: Run bot
       run: python bot.py
       env:
-        SLACK_WEBHOOK_11ST: ${{ secrets.SLACK_WEBHOOK_11ST }}
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
