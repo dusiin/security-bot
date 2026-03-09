@@ -152,6 +152,15 @@ def filter_new_items(news, cves, cache):
     new_cves = [c for c in cves if c["id"] not in cache["cves"]]
     return new_news, new_cves
 
+def remove_duplicate_news_by_link(news):
+    seen_links = set()
+    unique_news = []
+    for item in news:
+        if item["link"] not in seen_links:
+            seen_links.add(item["link"])
+            unique_news.append(item)
+    return unique_news
+
 # ==============================
 # Main
 # ==============================
@@ -160,7 +169,10 @@ def main():
     cache = load_cache()
 
     news = collect_news()
+    news = remove_duplicate_news_by_link(news)
     cves = collect_cve(days=7)
+    
+
 
     news, cves = filter_new_items(news, cves, cache)
 
@@ -172,9 +184,11 @@ def main():
 
     send_slack(message)
 
-    cache["news"] += [n["link"] for n in news]
-    cache["cves"] += [c["id"] for c in cves]
-
+#    cache["news"] += [n["link"] for n in news]
+#    cache["cves"] += [c["id"] for c in cves]
+    cache["news"] = list(set(cache["news"] + [n["link"] for n in news]))
+    cache["cves"] = list(set(cache["cves"] + [c["id"] for c in cves]))
+    
     save_cache(cache)
 
 if __name__ == "__main__":
