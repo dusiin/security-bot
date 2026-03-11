@@ -3,6 +3,7 @@ import requests
 import feedparser
 import json
 from datetime import datetime, timedelta, UTC
+from deep_translator import GoogleTranslator
 
 # ==============================
 # 설정
@@ -12,6 +13,15 @@ CACHE_FILE = os.path.join(os.getcwd(), "cache.json")  # 절대 경로
 MAX_NEWS_PER_SOURCE = 5
 CVSS_THRESHOLD = 7.0
 
+
+# ==============================
+# 번역
+# ==============================
+def translate_to_korean(text):
+    try:
+        return GoogleTranslator(source="en", target="ko").translate(text)
+    except Exception:
+        return text
 # ==============================
 # 캐시
 # ==============================
@@ -48,20 +58,30 @@ def send_slack(text):
 def build_message(news, cves):
 
     msg = "🔐 *Security Intelligence Update*\n\n"
-
+    TRANSLATE_SOURCES = ["The Hacker News", "BleepingComputer", "Dark Reading"]
+    
     if news:
         msg += "📰 *Security News*\n"
         for n in news:
-            msg += f"- {n['title']} ({n['source']})\n{n['link']}\n\n"
+            title = n['title']
+
+            msg += f"- {title}"
+
+            if n['source'] in TRANSLATE_SOURCES:
+                msg += f"\n-> {translate_to_korean(title)}"
+            
+            msg += f" ({n['source']})\n{n['link']}\n\n"
 
     if cves:
         msg += "🚨 *High Severity CVEs*\n"
         for c in cves:
             desc = c.get("desc", "").replace("\n", " ")[:200]
+            ko_desc = translate_to_korean(desc)
             msg += (
                 f"*{c['id']}*\n"
                 f"CVSS: {c['baseScore']} | Published: {c['published']}\n"
                 f"{desc}\n"
+                f"-> {ko_desc}\n"
                 f"{c['url']}\n\n"
             )
 
