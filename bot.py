@@ -58,7 +58,7 @@ def send_slack(webhook, text):
 
 def build_news_message(news):
 
-    msg += "📰 *Security News*\n\n"
+    msg = "📰 *Security News*\n\n"
     TRANSLATE_SOURCES = ["The Hacker News", "BleepingComputer", "Dark Reading"]
     
     for n in news:
@@ -74,7 +74,7 @@ def build_news_message(news):
 
 def build_cves_message(cves):
     
-    msg += "🚨 *High Severity CVEs*\n\n"
+    msg = "🚨 *High Severity CVEs*\n\n"
     
     for c in cves:
         desc = c.get("desc", "").replace("\n", " ")[:200]
