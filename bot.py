@@ -9,6 +9,7 @@ from deep_translator import GoogleTranslator
 # 설정
 # ==============================
 SLACK_WEBHOOK = os.environ["SLACK_WEBHOOK"]
+SLACK_WEBHOOK_CVE = os.environ["SLACK_WEBHOOK_CVE"]
 CACHE_FILE = os.path.join(os.getcwd(), "cache.json")  # 절대 경로
 MAX_NEWS_PER_SOURCE = 5
 CVSS_THRESHOLD = 7.0
@@ -43,10 +44,10 @@ def save_cache(cache):
 # ==============================
 # Slack 텍스트 메시지
 # ==============================
-def send_slack(text):
+def send_slack(webhook, text):
     try:
         r = requests.post(
-            SLACK_WEBHOOK,
+            webhook,
             json={"text": text},
             timeout=10
         )
@@ -55,35 +56,37 @@ def send_slack(text):
     except Exception as e:
         print("Error sending Slack message:", e)
 
-def build_message(news, cves):
+def build_news_message(news):
 
-    msg = "🔐 *Security Intelligence Update*\n\n"
+    msg += "📰 *Security News*\n\n"
     TRANSLATE_SOURCES = ["The Hacker News", "BleepingComputer", "Dark Reading"]
     
-    if news:
-        msg += "📰 *Security News*\n"
-        for n in news:
-            title = n['title']
+    for n in news:
+        title = n['title']
+        msg += f"- {title}"
 
-            msg += f"- {title}"
-
-            if n['source'] in TRANSLATE_SOURCES:
-                msg += f"\n-> {translate_to_korean(title)}"
+        if n['source'] in TRANSLATE_SOURCES:
+            msg += f"\n-> {translate_to_korean(title)}"
             
-            msg += f" ({n['source']})\n{n['link']}\n\n"
+        msg += f" ({n['source']})\n{n['link']}\n\n"
 
-    if cves:
-        msg += "🚨 *High Severity CVEs*\n"
-        for c in cves:
-            desc = c.get("desc", "").replace("\n", " ")[:200]
-            ko_desc = translate_to_korean(desc)
-            msg += (
-                f"*{c['id']}*\n"
-                f"CVSS: {c['baseScore']} | Published: {c['published']}\n"
-                f"{desc}\n"
-                f"-> {ko_desc}\n"
-                f"{c['url']}\n\n"
-            )
+    return msg
+
+def build_cves_message(cves):
+    
+    msg += "🚨 *High Severity CVEs*\n\n"
+    
+    for c in cves:
+        desc = c.get("desc", "").replace("\n", " ")[:200]
+        ko_desc = translate_to_korean(desc)
+        
+        msg += (
+            f"*{c['id']}*\n"
+            f"CVSS: {c['baseScore']} | Published: {c['published']}\n"
+            f"{desc}\n"
+            f"-> {ko_desc}\n"
+            f"{c['url']}\n\n"
+        )
 
     return msg
 
@@ -200,9 +203,15 @@ def main():
         print("No new items today.")
         return
 
-    message = build_message(news, cves)
+#    message = build_message(news, cves)
+#    send_slack(message)
+    if news:
+        news_msg = build_news_message(news)
+        send_slack(SLACK_WEBHOOK, news_msg)
 
-    send_slack(message)
+    if cves:
+        cve_msg = build_cve_message(cves)
+        send_slack(SLACK_WEBHOOK_CVE, cve_msg)
 
 #    cache["news"] += [n["link"] for n in news]
 #    cache["cves"] += [c["id"] for c in cves]
