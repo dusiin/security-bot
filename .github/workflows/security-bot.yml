@@ -16,7 +16,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3 # GitHub repo 코드 다운로드
       with:
-        token: ${{ secrets.GH_PAT }}
+        token: ${{ secrets.GH_PAT }} # Cache 를 위한 키! 중복제거
         fetch-depth: 0
 
     - name: Setup Python
@@ -32,6 +32,7 @@ jobs:
       run: python bot.py
       env:
         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        SLACK_WEBHOOK_CVE: ${{ secrets.SLACK_WEBHOOK_CVE }}
     - name: Commit cache.json if changed
       run: |
         git config user.name "github-actions"
