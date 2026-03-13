@@ -210,7 +210,7 @@ def main():
         send_slack(SLACK_WEBHOOK, news_msg)
 
     if cves:
-        cve_msg = build_cve_message(cves)
+        cve_msg = build_cves_message(cves)
         send_slack(SLACK_WEBHOOK_CVE, cve_msg)
 
 #    cache["news"] += [n["link"] for n in news]
