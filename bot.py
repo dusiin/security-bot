@@ -4,6 +4,10 @@ import feedparser
 import json
 from datetime import datetime, timedelta, UTC
 from deep_translator import GoogleTranslator
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(name)
 
 # ==============================
 # 설정
@@ -19,9 +23,17 @@ CVSS_THRESHOLD = 7.0
 # 번역
 # ==============================
 def translate_to_korean(text):
+    if not text or not text.strip():
+        return text
     try:
-        return GoogleTranslator(source="en", target="ko").translate(text)
+        results = GoogleTranslator(source="en", target="ko").translate(text)
+        if not result:
+            logger.warning("번역 결과가 비어 있습니다.")
+            return text
+            
+            return result
     except Exception:
+        logger.exception("Google 번역 실패")
         return text
 # ==============================
 # 캐시
