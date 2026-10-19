@@ -31,7 +31,7 @@ def translate_to_korean(text):
             logger.warning("번역 결과가 비어 있습니다.")
             return text
             
-            return result
+        return result
     except Exception:
         logger.exception("Google 번역 실패")
         return text
