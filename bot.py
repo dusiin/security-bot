@@ -7,7 +7,7 @@ from deep_translator import GoogleTranslator
 import logging
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 # ==============================
 # 설정
