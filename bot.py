@@ -2,8 +2,11 @@ import os
 import requests
 import feedparser
 import json
+import time
+import random
 from datetime import datetime, timedelta, UTC
 from deep_translator import GoogleTranslator
+from deep_translator.exceptions import TooManyRequests
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -25,16 +28,32 @@ CVSS_THRESHOLD = 7.0
 def translate_to_korean(text):
     if not text or not text.strip():
         return text
-    try:
-        results = GoogleTranslator(source="en", target="ko").translate(text)
-        if not result:
-            logger.warning("번역 결과가 비어 있습니다.")
+
+    for attempt in range(4):
+        try:
+            result = GoogleTranslator(source="en", target="ko").translate(text)
+            if not result:
+                logger.warning("번역 결과가 비어 있습니다.")
+                return text
+                
+            return result
+        except TooManyRequests:
+            if attempt == 3:
+                logger.exception("Google 번역 재시도 횟수 초과")
+                return text
+
+            wait_time = (2 ** (attempt + 1)) + random.uniform(0, 1)
+
+            logger.warning(
+                "Google 번역 요청 제한. %.1f초 후 재시도 (%d/4)",
+                wait_time,
+                attempt + 1
+            )
+            time.sleep(wait_time)
+        except Exception:
+            logger.exception("Google 번역 실패")
             return text
-            
-        return result
-    except Exception:
-        logger.exception("Google 번역 실패")
-        return text
+    return text
 # ==============================
 # 캐시
 # ==============================
